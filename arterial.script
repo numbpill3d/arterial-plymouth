@@ -1,0 +1,145 @@
+# ============================================================
+# Arterial — Plymouth boot splash (script module)
+# Black / dark-grey / arterial-red, to match the Arterial KDE suite.
+# splicer scorn (voidrane) · GPL-3.0-or-later
+#
+# Every piece of text is a pre-baked PNG (the initramfs ships only
+# a minimal font set), so the splash never relies on runtime fonts.
+# ============================================================
+
+W = Window.GetWidth();
+H = Window.GetHeight();
+cx = Window.GetX() + W / 2;
+cy = Window.GetY() + H / 2;
+
+Window.SetBackgroundTopColor(0.02, 0.0, 0.0);
+Window.SetBackgroundBottomColor(0.015, 0.0, 0.0);
+
+# ---- background (near-black + red vignette + faint sigil) ----
+bg.image  = Image("background.png").Scale(W, H);
+bg.sprite = Sprite(bg.image);
+bg.sprite.SetPosition(Window.GetX(), Window.GetY(), 0);
+
+# ---- centre sigil: slow rotate + opacity pulse ----
+sigil.base = Image("sigil.png");
+sigil.sprite = Sprite();
+sigil.sprite.SetPosition(cx - sigil.base.GetWidth() / 2,
+                         cy - sigil.base.GetHeight() / 2 - 60, 2);
+
+# ---- wordmark + subtitle below the sigil ----
+word.image = Image("wordmark.png");
+word.sprite = Sprite(word.image);
+word.sprite.SetPosition(cx - word.image.GetWidth() / 2, cy + 120, 3);
+
+sub.image = Image("subtitle.png");
+sub.sprite = Sprite(sub.image);
+sub.sprite.SetPosition(cx - sub.image.GetWidth() / 2, cy + 180, 3);
+sub.sprite.SetOpacity(0.0);
+
+# ---- progress bar ----
+pbox.image = Image("progress_box.png");
+pbar.full  = Image("progress_bar.png");
+bar_w = pbar.full.GetWidth();
+bar_x = cx - bar_w / 2;
+bar_y = cy + 230;
+
+pbox.sprite = Sprite(pbox.image);
+pbox.sprite.SetPosition(bar_x - 1, bar_y - 2, 3);
+pbar.sprite = Sprite();
+pbar.sprite.SetPosition(bar_x, bar_y, 4);
+
+progress = 0;
+
+#-------------------------------------------------------------
+# Animation loop
+#-------------------------------------------------------------
+tick = 0;
+fun refresh () {
+    tick++;
+
+    # sigil pulse + slow spin
+    o = 0.55 + 0.35 * Math.Sin(tick / 22);
+    sigil.rotated = sigil.base.Rotate(tick / 60);
+    sigil.sprite.SetImage(sigil.rotated);
+    sigil.sprite.SetPosition(cx - sigil.rotated.GetWidth() / 2,
+                             cy - sigil.rotated.GetHeight() / 2 - 60, 2);
+    sigil.sprite.SetOpacity(o);
+
+    # subtitle breathes in
+    sub.sprite.SetOpacity(0.25 + 0.2 * Math.Sin(tick / 30));
+
+    # progress fill grows toward the reported progress
+    draw = progress;
+    if (draw > 0) {
+        w = Math.Int(bar_w * draw);
+        if (w < 1) w = 1;
+        fill = pbar.full.Scale(w, pbar.full.GetHeight());
+        pbar.sprite.SetImage(fill);
+        pbar.sprite.SetPosition(bar_x, bar_y, 4);
+    }
+}
+Plymouth.SetRefreshFunction(refresh);
+
+fun progress_cb (duration, pct) {
+    progress = pct;
+}
+Plymouth.SetBootProgressFunction(progress_cb);
+
+#-------------------------------------------------------------
+# Password / passphrase prompt (e.g. encrypted disk)
+#-------------------------------------------------------------
+lock.image = Image("lock.png");
+entry.image = Image("entry.png");
+bullet.image = Image("bullet.png");
+
+prompt.lock = Sprite(lock.image);
+prompt.lock.SetOpacity(0);
+prompt.entry = Sprite(entry.image);
+prompt.entry.SetOpacity(0);
+
+entry_x = cx - entry.image.GetWidth() / 2;
+entry_y = cy + 300;
+prompt.lock.SetPosition(entry_x - 40, entry_y - 4, 5);
+prompt.entry.SetPosition(entry_x, entry_y, 5);
+
+bullets = [];
+
+fun hide_prompt () {
+    prompt.lock.SetOpacity(0);
+    prompt.entry.SetOpacity(0);
+    for (i = 0; i < 64; i++) {
+        if (bullets[i]) bullets[i].SetOpacity(0);
+    }
+}
+
+fun display_password_cb (prompt_text, n) {
+    prompt.lock.SetOpacity(1);
+    prompt.entry.SetOpacity(1);
+    for (i = 0; i < 64; i++) {
+        if (i < n) {
+            if (!bullets[i]) bullets[i] = Sprite(bullet.image);
+            bullets[i].SetPosition(entry_x + 14 + i * 16, entry_y + 14, 6);
+            bullets[i].SetOpacity(1);
+        } else {
+            if (bullets[i]) bullets[i].SetOpacity(0);
+        }
+    }
+}
+Plymouth.SetDisplayPasswordFunction(display_password_cb);
+
+fun display_normal_cb () {
+    hide_prompt();
+}
+Plymouth.SetDisplayNormalFunction(display_normal_cb);
+
+#-------------------------------------------------------------
+# Status messages
+#-------------------------------------------------------------
+message.sprite = Sprite();
+fun message_cb (text) {
+    message.image = Image.Text(text, 0.7, 0.42, 0.42);
+    message.sprite.SetImage(message.image);
+    message.sprite.SetPosition(cx - message.image.GetWidth() / 2, cy + 360, 7);
+}
+Plymouth.SetMessageFunction(message_cb);
+Plymouth.SetDisplayMessageFunction(message_cb);

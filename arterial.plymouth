@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Arterial
+Description=Black / dark-grey / arterial-red boot splash — pulsing eight-point sigil, red progress bar, matches the Arterial KDE suite
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/arterial
+ScriptFile=/usr/share/plymouth/themes/arterial/arterial.script
