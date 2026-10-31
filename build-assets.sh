@@ -28,4 +28,12 @@ magick -size 620x4 gradient:"$BLOOD"-"$HOT" progress_bar.png
 magick -background none -fill "$HOT" -font "$FONT" -pointsize 28 label:'†' -trim +repage lock.png
 magick -size 10x10 xc:none -fill "$HOT" -draw 'circle 5,5 5,1' bullet.png
 magick -size 360x40 xc:'#0a0000' -bordercolor "$EDGE" -border 1 entry.png
+
+# ImageMagick records the build time in PNG text chunks by default. Remove those
+# volatile chunks so rebuilding committed assets does not dirty a clean checkout.
+for asset in background.png wordmark.png subtitle.png progress_box.png \
+             progress_bar.png lock.png bullet.png entry.png; do
+  magick "$asset" -define png:exclude-chunk=date,time "$asset"
+done
+
 echo "assets rendered in $HERE"
